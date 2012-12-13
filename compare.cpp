@@ -50,8 +50,20 @@ int main(int argc, char** argv) {
 	drawMatches(srcImg, srcFeatures, dstImg, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
 		reinterpret_cast<const vector<char>&>(outlierMask));
 
-	imwrite("output.png", matchImg);
+	Mat alignedDstImg;
+	warpPerspective(dstImg, alignedDstImg, H.inv(), srcImg.size(), INTER_LINEAR, BORDER_CONSTANT);
+
+	Mat differenceImg;
+	absdiff(srcImg, alignedDstImg, differenceImg);
+
+	double n;
+	n = norm(srcImg, alignedDstImg);
+	printf("%f\n", n);
+
 	imshow("Matches: Src image (left) to dst (right)", matchImg);
+	imshow("Original", srcImg);
+	imshow("Aligned", alignedDstImg);
+	imshow("Difference", differenceImg);
 
 	waitKey(0);
 
