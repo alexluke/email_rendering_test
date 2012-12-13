@@ -4,29 +4,54 @@
 using namespace cv;
 
 int main(int argc, char** argv) {
-	Mat source_img;
-	Mat test_img;
-	source_img = imread("images/email1/source.png", CV_LOAD_IMAGE_GRAYSCALE);
-	test_img = imread("images/email1/gmail.png", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat srcImg, dstImg;
+	srcImg = imread("images/email1/source.png");
+	dstImg = imread("images/email1/gmail.png");
 
-	if (!(source_img.data && test_img.data)) {
+	if (!(srcImg.data && dstImg.data)) {
 		printf("No image data\n");
 		return -1;
 	}
 
-	SurfFeatureDetector detector(400);
-	vector<KeyPoint> keypoints1, keypoints2;
+	SurfFeatureDetector detector(2000);
+	vector<KeyPoint> srcFeatures, dstFeatures;
 
-	detector.detect(source_img, keypoints1);
-	detector.detect(test_img, keypoints2);
+	detector.detect(srcImg, srcFeatures);
+	detector.detect(dstImg, dstFeatures);
 
-	Mat img_keypoints1, img_keypoints2;
+	SurfDescriptorExtractor extractor;
+	Mat srcDescriptors, dstDescriptors;
+	extractor.compute(srcImg, srcFeatures, srcDescriptors);
+	extractor.compute(dstImg, dstFeatures, dstDescriptors);
 
-	drawKeypoints(source_img, keypoints1, img_keypoints1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-	drawKeypoints(test_img, keypoints2, img_keypoints2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+	BruteForceMatcher< L2<float> > matcher;
+	vector<DMatch> matches;
+	matcher.match(srcDescriptors, dstDescriptors, matches);
 
-	imshow("Keypoints 1", img_keypoints1);
-	imshow("Keypoints 2", img_keypoints2);
+	vector<int> pairOfSrcKP(matches.size()), pairOfDstKP(matches.size());
+	for (size_t i = 0; i < matches.size(); i++) {
+		pairOfSrcKP[i] = matches[i].queryIdx;
+		pairOfDstKP[i] = matches[i].trainIdx;
+	}
+
+	vector<Point2f> srcPoints, dstPoints;
+	KeyPoint::convert(srcFeatures, srcPoints, pairOfSrcKP);
+	KeyPoint::convert(dstFeatures, dstPoints, pairOfDstKP);
+
+	Mat src2DFeatures, dst2DFeatures;
+	Mat(srcPoints).copyTo(src2DFeatures);
+	Mat(dstPoints).copyTo(dst2DFeatures);
+
+	vector<uchar> outlierMask;
+	Mat H;
+	H = findHomography(src2DFeatures, dst2DFeatures, outlierMask, RANSAC, 3);
+
+	Mat matchImg;
+	drawMatches(srcImg, srcFeatures, dstImg, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
+		reinterpret_cast<const vector<char>&>(outlierMask));
+
+	imwrite("output.png", matchImg);
+	imshow("Matches: Src image (left) to dst (right)", matchImg);
 
 	waitKey(0);
 
