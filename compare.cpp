@@ -3,35 +3,30 @@
 
 using namespace cv;
 
-void draw_surf_points(Mat img) {
-	Ptr<FeatureDetector> detector = new SurfFeatureDetector(2000);
-	vector<KeyPoint> features;
-
-	detector->detect(img, features);
-
-	for (size_t i = 0; i < features.size(); i++) {
-		circle(img, features[i].pt, 5, Scalar(0, 0, 0), -1);
-	}
-}
-
 int main(int argc, char** argv) {
 	Mat source_img;
 	Mat test_img;
-	source_img = imread("images/email1/source.png");
-	test_img = imread("images/email1/gmail.png");
+	source_img = imread("images/email1/source.png", CV_LOAD_IMAGE_GRAYSCALE);
+	test_img = imread("images/email1/gmail.png", CV_LOAD_IMAGE_GRAYSCALE);
 
 	if (!(source_img.data && test_img.data)) {
 		printf("No image data\n");
 		return -1;
 	}
 
-	draw_surf_points(source_img);
-	draw_surf_points(test_img);
+	SurfFeatureDetector detector(400);
+	vector<KeyPoint> keypoints1, keypoints2;
 
-	namedWindow("w1", CV_WINDOW_AUTOSIZE);
-	imshow("w1", source_img);
-	namedWindow("w2", CV_WINDOW_AUTOSIZE);
-	imshow("w2", test_img);
+	detector.detect(source_img, keypoints1);
+	detector.detect(test_img, keypoints2);
+
+	Mat img_keypoints1, img_keypoints2;
+
+	drawKeypoints(source_img, keypoints1, img_keypoints1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+	drawKeypoints(test_img, keypoints2, img_keypoints2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+
+	imshow("Keypoints 1", img_keypoints1);
+	imshow("Keypoints 2", img_keypoints2);
 
 	waitKey(0);
 
