@@ -3,6 +3,87 @@
 
 using namespace cv;
 
+Rect getBorder(Mat img) {
+	Mat grayImg, tmpImg;
+	cvtColor(img, grayImg, CV_BGR2GRAY);
+	threshold(grayImg, tmpImg, 150, 255, THRESH_BINARY);
+
+	// FIXME: This is super inefficient
+	int topRow = 0;
+	int bottomRow = tmpImg.rows - 1;
+	int leftCol = 0;
+	int rightCol = tmpImg.cols - 1;
+	// Skip edge pixels because the image might have a one pixel border
+	for (int row = 1; row < tmpImg.rows - 1; row++) {
+		unsigned char* p = tmpImg.ptr<unsigned char>(row);
+		bool nonWhite = false;
+		// Skip the edge pixels
+		for (int col = 1; col < tmpImg.cols - 1; col++) {
+			p++;
+			if (*p == 0) {
+				nonWhite = true;
+			}
+		}
+		if (nonWhite) {
+			topRow = row - 1;
+			break;
+		}
+	}
+
+	// Skip edge pixels because the image might have a one pixel border
+	for (int row = tmpImg.rows - 2; row > 1; row--) {
+		unsigned char* p = tmpImg.ptr<unsigned char>(row);
+		bool nonWhite = false;
+		// Skip the edge pixels
+		for (int col = 1; col < tmpImg.cols - 1; col++) {
+			p++;
+			if (*p == 0) {
+				nonWhite = true;
+			}
+		}
+		if (nonWhite) {
+			bottomRow = row + 1;
+			break;
+		}
+	}
+
+	// Skip edge pixels because the image might have a one pixel border
+	for (int col = 1; col < tmpImg.cols - 1; col++) {
+		unsigned char* p = tmpImg.ptr<unsigned char>(1) + col;
+		bool nonWhite = false;
+		// Skip the edge pixels
+		for (int row = 1; row < tmpImg.rows - 1; row++) {
+			if (*p == 0) {
+				nonWhite = true;
+			}
+			p += tmpImg.cols;
+		}
+		if (nonWhite) {
+			leftCol = col - 1;
+			break;
+		}
+	}
+
+	// Skip edge pixels because the image might have a one pixel border
+	for (int col = tmpImg.cols - 2; col > 1; col--) {
+		unsigned char* p = tmpImg.ptr<unsigned char>(1) + col;
+		bool nonWhite = false;
+		// Skip the edge pixels
+		for (int row = 1; row < tmpImg.rows - 1; row++) {
+			if (*p == 0) {
+				nonWhite = true;
+			}
+			p += tmpImg.cols;
+		}
+		if (nonWhite) {
+			rightCol = col + 1;
+			break;
+		}
+	}
+
+	return Rect(leftCol, topRow, rightCol - leftCol, bottomRow - topRow);
+}
+
 int main(int argc, char** argv) {
 	Mat srcImg, dstImg;
 	srcImg = imread("images/email1/source.png");
@@ -12,6 +93,10 @@ int main(int argc, char** argv) {
 		printf("No image data\n");
 		return -1;
 	}
+
+	Rect rect = getBorder(srcImg);
+
+	srcImg = srcImg(rect);
 
 	SurfFeatureDetector detector(2000);
 	vector<KeyPoint> srcFeatures, dstFeatures;
