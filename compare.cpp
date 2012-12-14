@@ -53,6 +53,20 @@ int main(int argc, char** argv) {
 	Mat alignedDstImg;
 	warpPerspective(dstImg, alignedDstImg, H.inv(), srcImg.size(), INTER_LINEAR, BORDER_CONSTANT);
 
+	vector<Point2f> objCorners(4);
+	objCorners[0] = cvPoint(0, 0);
+	objCorners[1] = cvPoint(srcImg.cols, 0);
+	objCorners[2] = cvPoint(srcImg.cols, srcImg.rows);
+	objCorners[3] = cvPoint(0, srcImg.rows);
+
+	vector<Point2f> sceneCorners(4);
+	perspectiveTransform(objCorners, sceneCorners, H);
+
+	line(dstImg, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 4);
+	line(dstImg, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 4);
+	line(dstImg, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 4);
+	line(dstImg, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 4);
+
 	Mat differenceImg;
 	absdiff(srcImg, alignedDstImg, differenceImg);
 
@@ -62,6 +76,7 @@ int main(int argc, char** argv) {
 
 	imshow("Matches: Src image (left) to dst (right)", matchImg);
 	imshow("Original", srcImg);
+	imshow("Matched", dstImg);
 	imshow("Aligned", alignedDstImg);
 	imshow("Difference", differenceImg);
 
