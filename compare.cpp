@@ -3,6 +3,7 @@
 
 using namespace cv;
 
+/* Debug method */
 void printr(Rect rect) {
 	printf("Rect at (%d %d). %dx%d\n", rect.x, rect.y, rect.width, rect.height);
 }
@@ -139,9 +140,6 @@ int main(int argc, char** argv) {
 	drawMatches(srcImg, srcFeatures, dstImg, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
 		reinterpret_cast<const vector<char>&>(outlierMask));
 
-	Mat alignedDstImg;
-	warpPerspective(dstImg, alignedDstImg, H.inv(), srcImg.size(), INTER_LINEAR, BORDER_CONSTANT);
-
 	vector<Point2f> objCorners(4);
 	objCorners[0] = Point(0, 0);
 	objCorners[1] = Point(srcImg.cols, 0);
@@ -158,26 +156,17 @@ int main(int argc, char** argv) {
 	right = max(sceneCorners[1].x, sceneCorners[2].x);
 	Rect dstRect = Rect(left, top, right - left, bottom - top);
 
-	printr(dstRect);
-	//dstRect = dstRect + Size(10, 10) - Point(5, 5);
-	printr(dstRect);
-
-	printr(srcRect);
 	Point p = dstRect.tl() - Point(sceneCorners[0].x, sceneCorners[0].y);
-	printf("(%d, %d)\n", p.x, p.y);
 	srcRect.x += p.x;
 	srcRect.y += p.y;
 	srcRect.width = dstRect.width;
 	srcRect.height = dstRect.height;
-	printr(srcRect);
 
 	srcImg = originalSrcImg(srcRect);
 
 	Mat croppedDstImg;
 	dstImg.copyTo(croppedDstImg);
 	croppedDstImg = croppedDstImg(dstRect);
-
-	//printr(srcRect);
 
 	rectangle(dstImg, dstRect, Scalar(255, 0, 0), 2);
 
@@ -191,13 +180,12 @@ int main(int argc, char** argv) {
 
 	double n;
 	n = norm(srcImg, croppedDstImg);
-	printf("%f\n", n);
+	printf("Match value: %f\n", n);
 
-	//imshow("Matches: Src image (left) to dst (right)", matchImg);
-	//imshow("Original", srcImg);
+	imshow("Matches: Src image (left) to dst (right)", matchImg);
+	imshow("Original", srcImg);
 	//imshow("Matched", dstImg);
-	//imshow("Cropped", croppedDstImg);
-	//imshow("Aligned", alignedDstImg);
+	imshow("Cropped", croppedDstImg);
 	imshow("Difference", differenceImg);
 
 	waitKey(0);
