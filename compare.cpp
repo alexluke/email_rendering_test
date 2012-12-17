@@ -3,6 +3,10 @@
 
 using namespace cv;
 
+void printr(Rect rect) {
+	printf("Rect at (%d %d). %dx%d\n", rect.x, rect.y, rect.width, rect.height);
+}
+
 Rect getBorder(Mat img) {
 	Mat grayImg, tmpImg;
 	cvtColor(img, grayImg, CV_BGR2GRAY);
@@ -85,18 +89,18 @@ Rect getBorder(Mat img) {
 }
 
 int main(int argc, char** argv) {
-	Mat srcImg, dstImg;
-	srcImg = imread("images/email1/source.png");
+	Mat srcImg, dstImg, originalSrcImg;
+	originalSrcImg = imread("images/email1/source.png");
 	dstImg = imread("images/email1/gmail.png");
 
-	if (!(srcImg.data && dstImg.data)) {
+	if (!(originalSrcImg.data && dstImg.data)) {
 		printf("No image data\n");
 		return -1;
 	}
 
-	Rect rect = getBorder(srcImg);
+	Rect srcRect = getBorder(originalSrcImg);
 
-	srcImg = srcImg(rect);
+	srcImg = originalSrcImg(srcRect);
 
 	SurfFeatureDetector detector(2000);
 	vector<KeyPoint> srcFeatures, dstFeatures;
@@ -139,30 +143,61 @@ int main(int argc, char** argv) {
 	warpPerspective(dstImg, alignedDstImg, H.inv(), srcImg.size(), INTER_LINEAR, BORDER_CONSTANT);
 
 	vector<Point2f> objCorners(4);
-	objCorners[0] = cvPoint(0, 0);
-	objCorners[1] = cvPoint(srcImg.cols, 0);
-	objCorners[2] = cvPoint(srcImg.cols, srcImg.rows);
-	objCorners[3] = cvPoint(0, srcImg.rows);
+	objCorners[0] = Point(0, 0);
+	objCorners[1] = Point(srcImg.cols, 0);
+	objCorners[2] = Point(srcImg.cols, srcImg.rows);
+	objCorners[3] = Point(0, srcImg.rows);
 
 	vector<Point2f> sceneCorners(4);
 	perspectiveTransform(objCorners, sceneCorners, H);
 
-	line(dstImg, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 4);
-	line(dstImg, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 4);
-	line(dstImg, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 4);
-	line(dstImg, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 4);
+	int top, left, bottom, right;
+	top = min(sceneCorners[0].y, sceneCorners[1].y);
+	bottom = max(sceneCorners[2].y, sceneCorners[3].y);
+	left = min(sceneCorners[0].x, sceneCorners[3].x);
+	right = max(sceneCorners[1].x, sceneCorners[2].x);
+	Rect dstRect = Rect(left, top, right - left, bottom - top);
+
+	printr(dstRect);
+	//dstRect = dstRect + Size(10, 10) - Point(5, 5);
+	printr(dstRect);
+
+	printr(srcRect);
+	Point p = dstRect.tl() - Point(sceneCorners[0].x, sceneCorners[0].y);
+	printf("(%d, %d)\n", p.x, p.y);
+	srcRect.x += p.x;
+	srcRect.y += p.y;
+	srcRect.width = dstRect.width;
+	srcRect.height = dstRect.height;
+	printr(srcRect);
+
+	srcImg = originalSrcImg(srcRect);
+
+	Mat croppedDstImg;
+	dstImg.copyTo(croppedDstImg);
+	croppedDstImg = croppedDstImg(dstRect);
+
+	//printr(srcRect);
+
+	rectangle(dstImg, dstRect, Scalar(255, 0, 0), 2);
+
+	line(dstImg, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 2);
+	line(dstImg, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 2);
+	line(dstImg, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 2);
+	line(dstImg, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 2);
 
 	Mat differenceImg;
-	absdiff(srcImg, alignedDstImg, differenceImg);
+	absdiff(srcImg, croppedDstImg, differenceImg);
 
 	double n;
-	n = norm(srcImg, alignedDstImg);
+	n = norm(srcImg, croppedDstImg);
 	printf("%f\n", n);
 
-	imshow("Matches: Src image (left) to dst (right)", matchImg);
-	imshow("Original", srcImg);
-	imshow("Matched", dstImg);
-	imshow("Aligned", alignedDstImg);
+	//imshow("Matches: Src image (left) to dst (right)", matchImg);
+	//imshow("Original", srcImg);
+	//imshow("Matched", dstImg);
+	//imshow("Cropped", croppedDstImg);
+	//imshow("Aligned", alignedDstImg);
 	imshow("Difference", differenceImg);
 
 	waitKey(0);
