@@ -3,7 +3,8 @@
 
 using namespace cv;
 
-#define DEBUG 1
+#define SECTION_THRESHOLD 10
+//#define DEBUG 1
 #ifdef DEBUG
 #define PRINT_RECT(rect) printf("Rect at (%d, %d) %dx%d\n", rect.x, rect.y, rect.width, rect.height)
 #else
@@ -189,10 +190,46 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	absdiff(section, target, differenceImg);
 
 	imshow("Difference", differenceImg);
-	waitKey(0);
 #endif
 
 	return norm(section, target);
+}
+
+vector<Mat> getSections(Mat img) {
+	vector<Mat> sections;
+	Mat tmpImg;
+	cvtColor(img, tmpImg, CV_BGR2GRAY);
+	threshold(tmpImg, tmpImg, 150, 255, THRESH_BINARY);
+
+	int consecutiveBlankRows = 0,
+		startContent = 0,
+		endContent = 0;
+	for (int row = 1; row < tmpImg.rows - 1; row++) {
+		unsigned char* p = tmpImg.ptr<unsigned char>(row);
+		bool blankRow = true;
+		for (int col = 1; col < tmpImg.cols - 1; col++) {
+			p++;
+			if (*p == 0) {
+				blankRow = false;
+				break;
+			}
+		}
+		if (blankRow) {
+			consecutiveBlankRows++;
+		} else {
+			if (consecutiveBlankRows >= SECTION_THRESHOLD) {
+				Mat t = img.rowRange(startContent, endContent);
+				sections.push_back(t);
+				startContent = endContent = row - 1;
+			} else {
+				endContent = row + 1;
+			}
+			consecutiveBlankRows = 0;
+		}
+	}
+	sections.push_back(img.rowRange(startContent, endContent));
+
+	return sections;
 }
 
 int main(int argc, char** argv) {
@@ -208,7 +245,16 @@ int main(int argc, char** argv) {
 	Rect srcRect = getBorder(srcImg);
 
 	double matchValue = matchImage(dstImg, srcImg, srcRect);
-	printf("Match value: %f\n", matchValue);
+	printf("Total match value: %f\n", matchValue);
+
+	Mat croppedSrc = srcImg(srcRect);
+	vector<Mat> sections = getSections(croppedSrc);
+	char name[50];
+	for (unsigned int i = 0; i < sections.size(); i++) {
+		sprintf(name, "Section #%d", i);
+		imshow(name, sections[i]);
+	}
+	waitKey(0);
 
 	return 0;
 }
