@@ -3,10 +3,12 @@
 
 using namespace cv;
 
-/* Debug method */
-void printr(Rect rect) {
-	printf("Rect at (%d %d). %dx%d\n", rect.x, rect.y, rect.width, rect.height);
-}
+#define DEBUG 1
+#ifdef DEBUG
+#define PRINT_RECT(rect) printf("Rect at (%d, %d) %dx%d\n", rect.x, rect.y, rect.width, rect.height)
+#else
+#define PRINT_RECT(rect) do {} while(0)
+#endif
 
 Rect getBorder(Mat img) {
 	Mat grayImg, tmpImg;
@@ -89,30 +91,26 @@ Rect getBorder(Mat img) {
 	return Rect(leftCol, topRow, rightCol - leftCol, bottomRow - topRow);
 }
 
-int main(int argc, char** argv) {
-	Mat srcImg, dstImg, originalSrcImg;
-	originalSrcImg = imread("images/email1/source.png");
-	dstImg = imread("images/email1/gmail.png");
+double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
+	if (region.width == 0 || region.height == 0)
+		region = Rect(0, 0, toMatch.cols, toMatch.rows);
 
-	if (!(originalSrcImg.data && dstImg.data)) {
-		printf("No image data\n");
-		return -1;
-	}
+	Mat section = toMatch(region);
 
-	Rect srcRect = getBorder(originalSrcImg);
-
-	srcImg = originalSrcImg(srcRect);
+#ifdef DEBUG
+	imshow("Original", toMatch);
+#endif
 
 	SurfFeatureDetector detector(2000);
 	vector<KeyPoint> srcFeatures, dstFeatures;
 
-	detector.detect(srcImg, srcFeatures);
-	detector.detect(dstImg, dstFeatures);
+	detector.detect(section, srcFeatures);
+	detector.detect(target, dstFeatures);
 
 	SurfDescriptorExtractor extractor;
 	Mat srcDescriptors, dstDescriptors;
-	extractor.compute(srcImg, srcFeatures, srcDescriptors);
-	extractor.compute(dstImg, dstFeatures, dstDescriptors);
+	extractor.compute(section, srcFeatures, srcDescriptors);
+	extractor.compute(target, dstFeatures, dstDescriptors);
 
 	BruteForceMatcher< L2<float> > matcher;
 	vector<DMatch> matches;
@@ -136,15 +134,18 @@ int main(int argc, char** argv) {
 	Mat H;
 	H = findHomography(src2DFeatures, dst2DFeatures, outlierMask, RANSAC, 3);
 
+#ifdef DEBUG
 	Mat matchImg;
-	drawMatches(srcImg, srcFeatures, dstImg, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
+	drawMatches(section, srcFeatures, target, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
 		reinterpret_cast<const vector<char>&>(outlierMask));
+	imshow("Matches: Src image (left) to dst (right)", matchImg);
+#endif
 
 	vector<Point2f> objCorners(4);
 	objCorners[0] = Point(0, 0);
-	objCorners[1] = Point(srcImg.cols, 0);
-	objCorners[2] = Point(srcImg.cols, srcImg.rows);
-	objCorners[3] = Point(0, srcImg.rows);
+	objCorners[1] = Point(section.cols, 0);
+	objCorners[2] = Point(section.cols, section.rows);
+	objCorners[3] = Point(0, section.rows);
 
 	vector<Point2f> sceneCorners(4);
 	perspectiveTransform(objCorners, sceneCorners, H);
@@ -157,38 +158,57 @@ int main(int argc, char** argv) {
 	Rect dstRect = Rect(left, top, right - left, bottom - top);
 
 	Point p = dstRect.tl() - Point(sceneCorners[0].x, sceneCorners[0].y);
-	srcRect.x += p.x;
-	srcRect.y += p.y;
-	srcRect.width = dstRect.width;
-	srcRect.height = dstRect.height;
+	region.x += p.x;
+	region.y += p.y;
+	region.width = dstRect.width;
+	region.height = dstRect.height;
 
-	srcImg = originalSrcImg(srcRect);
+	section = toMatch(region);
 
-	Mat croppedDstImg;
-	dstImg.copyTo(croppedDstImg);
-	croppedDstImg = croppedDstImg(dstRect);
+#ifdef DEBUG
+	Mat originalTarget;
+	target.copyTo(originalTarget);
+#endif
 
-	rectangle(dstImg, dstRect, Scalar(255, 0, 0), 2);
+	target = target(dstRect);
 
-	line(dstImg, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 2);
-	line(dstImg, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 2);
-	line(dstImg, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 2);
-	line(dstImg, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 2);
+#ifdef DEBUG
+	rectangle(originalTarget, dstRect, Scalar(255, 0, 0), 2);
 
+	line(originalTarget, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 2);
+
+	imshow("Matched", originalTarget);
+	imshow("Cropped", target);
+#endif
+
+#ifdef DEBUG
 	Mat differenceImg;
-	absdiff(srcImg, croppedDstImg, differenceImg);
+	absdiff(section, target, differenceImg);
 
-	double n;
-	n = norm(srcImg, croppedDstImg);
-	printf("Match value: %f\n", n);
-
-	imshow("Matches: Src image (left) to dst (right)", matchImg);
-	imshow("Original", srcImg);
-	//imshow("Matched", dstImg);
-	imshow("Cropped", croppedDstImg);
 	imshow("Difference", differenceImg);
-
 	waitKey(0);
+#endif
+
+	return norm(section, target);
+}
+
+int main(int argc, char** argv) {
+	Mat srcImg, dstImg;
+	srcImg = imread("images/email1/source.png");
+	dstImg = imread("images/email1/gmail.png");
+
+	if (!(srcImg.data && dstImg.data)) {
+		printf("No image data\n");
+		return -1;
+	}
+
+	Rect srcRect = getBorder(srcImg);
+
+	double matchValue = matchImage(dstImg, srcImg, srcRect);
+	printf("Match value: %f\n", matchValue);
 
 	return 0;
 }
