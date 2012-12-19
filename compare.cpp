@@ -133,7 +133,7 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 
 	vector<uchar> outlierMask;
 	Mat H;
-	H = findHomography(src2DFeatures, dst2DFeatures, outlierMask, RANSAC, 3);
+	H = findHomography(src2DFeatures, dst2DFeatures, RANSAC, 3, outlierMask);
 
 #ifdef DEBUG
 	Mat matchImg;
