@@ -195,10 +195,13 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	return norm(section, target);
 }
 
-vector<Rect> getSections(Mat img) {
+vector<Rect> getSections(Mat img, Rect region=Rect()) {
+	if (region.width == 0 || region.height == 0)
+		region = Rect(0, 0, img.cols, img.rows);
+
 	vector<Rect> sections;
-	Mat tmpImg;
-	cvtColor(img, tmpImg, CV_BGR2GRAY);
+	Mat tmpImg = img(region);
+	cvtColor(tmpImg, tmpImg, CV_BGR2GRAY);
 	threshold(tmpImg, tmpImg, 150, 255, THRESH_BINARY);
 
 	int consecutiveBlankRows = 0,
@@ -218,7 +221,9 @@ vector<Rect> getSections(Mat img) {
 			consecutiveBlankRows++;
 		} else {
 			if (consecutiveBlankRows >= SECTION_THRESHOLD) {
-				sections.push_back(Rect(0, startContent, tmpImg.cols, endContent - startContent));
+				Rect r = Rect(0, startContent, tmpImg.cols, endContent - startContent);
+				r += region.tl();
+				sections.push_back(r);
 				startContent = endContent = row - 1;
 			} else {
 				endContent = row + 2;
@@ -226,7 +231,9 @@ vector<Rect> getSections(Mat img) {
 			consecutiveBlankRows = 0;
 		}
 	}
-	sections.push_back(Rect(0, startContent, tmpImg.cols, endContent - startContent));
+	Rect r = Rect(0, startContent, tmpImg.cols, endContent - startContent);
+	r += region.tl();
+	sections.push_back(r);
 
 	return sections;
 }
@@ -246,14 +253,17 @@ int main(int argc, char** argv) {
 	double matchValue = matchImage(dstImg, srcImg, srcRect);
 	printf("Total match value: %f\n", matchValue);
 
-	Mat croppedSrc = srcImg(srcRect);
-	vector<Rect> sections = getSections(croppedSrc);
+	vector<Rect> sections = getSections(srcImg, srcRect);
 	char name[50];
 	for (unsigned int i = 0; i < sections.size(); i++) {
+#ifdef DEBUG
 		PRINT_RECT(sections[i]);
-		sprintf(name, "Section #%d", i);
-		Mat t = croppedSrc(sections[i]);
+		Mat t = srcImg(sections[i]);
+		sprintf(name, "Section %d", i);
 		imshow(name, t);
+#endif
+		//matchValue = matchImage(dstImg, croppedSrc, sections[i]);
+		//printf("Section #%d match value: %f\n", i, matchValue);
 	}
 	waitKey(0);
 
