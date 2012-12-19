@@ -138,7 +138,8 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 #ifdef DEBUG
 	Mat matchImg;
 	drawMatches(section, srcFeatures, target, dstFeatures, matches, matchImg, Scalar::all(-1), Scalar::all(-1),
-		reinterpret_cast<const vector<char>&>(outlierMask));
+		reinterpret_cast<const vector<char>&>(outlierMask), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+	namedWindow("Matches: Src image (left) to dst (right)", CV_WINDOW_NORMAL);
 	imshow("Matches: Src image (left) to dst (right)", matchImg);
 #endif
 
