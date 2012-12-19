@@ -151,6 +151,21 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	vector<Point2f> sceneCorners(4);
 	perspectiveTransform(objCorners, sceneCorners, H);
 
+#ifdef DEBUG
+	Mat originalTarget;
+	target.copyTo(originalTarget);
+
+
+	line(originalTarget, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 2);
+	line(originalTarget, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 2);
+
+	namedWindow("Matched", CV_WINDOW_NORMAL);
+	imshow("Matched", originalTarget);
+	waitKey(0);
+#endif
+
 	int top, left, bottom, right;
 	top = min(sceneCorners[0].y, sceneCorners[1].y);
 	bottom = max(sceneCorners[2].y, sceneCorners[3].y);
@@ -166,23 +181,14 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 
 	section = toMatch(region);
 
-#ifdef DEBUG
-	Mat originalTarget;
-	target.copyTo(originalTarget);
-#endif
-
 	target = target(dstRect);
 
 #ifdef DEBUG
 	rectangle(originalTarget, dstRect, Scalar(255, 0, 0), 2);
 
-	line(originalTarget, sceneCorners[0], sceneCorners[1], Scalar(0, 255, 0), 2);
-	line(originalTarget, sceneCorners[1], sceneCorners[2], Scalar(0, 255, 0), 2);
-	line(originalTarget, sceneCorners[2], sceneCorners[3], Scalar(0, 255, 0), 2);
-	line(originalTarget, sceneCorners[3], sceneCorners[0], Scalar(0, 255, 0), 2);
-
-	imshow("Matched", originalTarget);
 	imshow("Cropped", target);
+	imshow("Matched", originalTarget);
+	waitKey(0);
 #endif
 
 #ifdef DEBUG
@@ -262,8 +268,8 @@ int main(int argc, char** argv) {
 		sprintf(name, "Section %d", i);
 		imshow(name, t);
 #endif
-		//matchValue = matchImage(dstImg, croppedSrc, sections[i]);
-		//printf("Section #%d match value: %f\n", i, matchValue);
+		matchValue = matchImage(dstImg, srcImg, sections[i]);
+		printf("Section #%d match value: %f\n", i, matchValue);
 	}
 	waitKey(0);
 
