@@ -3,7 +3,7 @@
 
 using namespace cv;
 
-#define SECTION_THRESHOLD 10
+#define SECTION_THRESHOLD 20
 #define DEBUG 1
 #ifdef DEBUG
 #define PRINT_RECT(rect) printf("Rect at (%d, %d) %dx%d\n", rect.x, rect.y, rect.width, rect.height)
@@ -209,7 +209,11 @@ vector<Rect> getSections(Mat img, Rect region=Rect()) {
 	vector<Rect> sections;
 	Mat tmpImg = img(region);
 	cvtColor(tmpImg, tmpImg, CV_BGR2GRAY);
-	threshold(tmpImg, tmpImg, 150, 255, THRESH_BINARY);
+	threshold(tmpImg, tmpImg, 200, 255, THRESH_BINARY);
+
+#ifdef DEBUG
+	imshow("threshold", tmpImg);
+#endif
 
 	int consecutiveBlankRows = 0,
 		startContent = 0,
