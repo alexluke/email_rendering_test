@@ -173,6 +173,12 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	left = min(sceneCorners[0].x, sceneCorners[3].x);
 	right = max(sceneCorners[1].x, sceneCorners[2].x);
 	Rect dstRect = Rect(left, top, right - left, bottom - top);
+	if (dstRect.width == 0 || dstRect.height == 0) {
+#ifdef DEBUG
+		printf("Cannot match region\n");
+#endif
+		return DBL_MAX;
+	}
 
 	Point p = dstRect.tl() - Point(sceneCorners[0].x, sceneCorners[0].y);
 
@@ -184,6 +190,10 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 
 	region.x += p.x;
 	region.y += p.y;
+
+	dstRect.width = min(dstRect.width, toMatch.cols - region.x);
+	dstRect.height = min(dstRect.height, toMatch.rows - region.y);
+
 	region.width = dstRect.width;
 	region.height = dstRect.height;
 
