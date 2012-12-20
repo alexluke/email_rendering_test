@@ -6,7 +6,7 @@ using namespace cv;
 #define SECTION_THRESHOLD 20
 #define DEBUG 1
 #ifdef DEBUG
-#define PRINT_RECT(rect) printf("Rect at (%d, %d) %dx%d\n", rect.x, rect.y, rect.width, rect.height)
+#define PRINT_RECT(rect) printf("Rect %s at (%d, %d) %dx%d\n", #rect, rect.x, rect.y, rect.width, rect.height)
 #else
 #define PRINT_RECT(rect) do {} while(0)
 #endif
@@ -175,6 +175,13 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	Rect dstRect = Rect(left, top, right - left, bottom - top);
 
 	Point p = dstRect.tl() - Point(sceneCorners[0].x, sceneCorners[0].y);
+
+#ifdef DEBUG
+	rectangle(originalTarget, dstRect, Scalar(255, 0, 0), 2);
+	imshow("Matched", originalTarget);
+	waitKey(0);
+#endif
+
 	region.x += p.x;
 	region.y += p.y;
 	region.width = dstRect.width;
@@ -185,14 +192,8 @@ double matchImage(Mat target, Mat toMatch, Rect region=Rect()) {
 	target = target(dstRect);
 
 #ifdef DEBUG
-	rectangle(originalTarget, dstRect, Scalar(255, 0, 0), 2);
-
 	imshow("Cropped", target);
-	imshow("Matched", originalTarget);
-	waitKey(0);
-#endif
 
-#ifdef DEBUG
 	Mat differenceImg;
 	absdiff(section, target, differenceImg);
 
